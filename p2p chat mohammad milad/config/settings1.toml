@@ -1,0 +1,5 @@
+handle = "milad1"
+port = 6000
+whoisport = 5555
+autoreply = "Bin gleich da"
+imagepath = "./downloads"
