@@ -1,0 +1,4 @@
+handle = "Testperson"
+port = 5001
+peers = ["127.0.0.1:5000"]
+

@@ -1,6 +1,6 @@
-import toml
+import tomllib
 
-def load_config(path="config/settings.toml"):
-    with open(path, "r") as f:
-        config = toml.load(f)
-    return config
+def load_config(dateipfad="config/settings.toml"):
+    with open(dateipfad, "rb") as datei:
+        konfig = tomllib.load(datei)
+    return konfig

@@ -3,7 +3,12 @@ from network.messaging import send_message, start_listening
 import threading
 
 # Datei aus settings.toml einlesen
-config = load_config()
+import sys
+
+# Optional: Dateiname per Argument übergeben
+config_path = sys.argv[1] if len(sys.argv) > 1 else "config/settings.toml"
+config = load_config(config_path)
+
 handle = config["handle"]
 my_port = config["port"]
 peers = config["peers"]
