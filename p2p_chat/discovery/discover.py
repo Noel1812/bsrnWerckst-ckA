@@ -1,4 +1,4 @@
-// von Mulu und Milad //
+# Mulu und Milad 
 
 import socket
 import time
