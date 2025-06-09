@@ -33,3 +33,13 @@ while True:
     for peer in peers:
         ip, port = peer.split(":")
         send_message(full_message, ip, int(port))
+
+
+
+
+# Verknüpfung mit Discovery (eventuell)
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+leave_msg = f"LEAVE:{handle}:{port}"
+sock.sendto(leave_msg.encode(), ("255.255.255.255", whoisport))
+
