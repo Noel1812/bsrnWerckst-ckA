@@ -1,83 +1,66 @@
-# Mulu und Milad 
+# Mulu und Milad
 
 import socket
 import time
-import threading
+from multiprocessing import Process, Pipe
 
-class DiscoveryService:
-    def __init__(self, handle, port, whoisport):
-        self.handle = handle
-        self.port = port
-        self.whoisport = whoisport
-        self.peers = {}  # {(ip, port): {"handle": ..., "last_seen": ...}}
-        self.running = True
+def discovery_process(handle, port, whoisport, pipe_conn):
+    peers = {}  # {(ip, port): {"handle": ..., "last_seen": ...}}
 
-    def send_join_loop(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            while self.running:
-                message = f"JOIN:{self.handle}:{self.port}"
-                s.sendto(message.encode(), ("255.255.255.255", self.whoisport))
-                print(f"[Discovery] JOIN gesendet: {message}")
-                time.sleep(5)
+    # Setup Socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.bind(("0.0.0.0", whoisport))
 
-    def listen_loop(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", self.whoisport))
-        print(f"[Discovery] Lausche auf Port {self.whoisport}")
+    last_send_time = 0
 
-        while self.running:
-            try:
-                data, addr = sock.recvfrom(1024)
-                msg = data.decode().strip()
-                sender_ip, _ = addr
+    while True:
+        now = time.time()
 
-                if msg == "WHOIS":
-                    response = f"{self.handle}:{self.port}"
-                    sock.sendto(response.encode(), addr)
+        # Regelmäßig JOIN senden
+        if now - last_send_time > 5:
+            message = f"JOIN:{handle}:{port}"
+            sock.sendto(message.encode(), ("255.255.255.255", whoisport))
+            last_send_time = now
 
-                elif msg.startswith("JOIN:"):
-                    parts = msg.split(":")
-                    if len(parts) == 3:
-                        peer_handle, peer_port = parts[1], int(parts[2])
-                        key = (sender_ip, peer_port)
-                        self.peers[key] = {
-                            "handle": peer_handle,
-                            "last_seen": time.time()
-                        }
-                        print(f"[Discovery] JOIN empfangen von {peer_handle}@{sender_ip}:{peer_port}")
+        # Nachrichten empfangen
+        sock.settimeout(1.0)
+        try:
+            data, addr = sock.recvfrom(1024)
+            msg = data.decode().strip()
+            sender_ip, _ = addr
 
-                elif msg.startswith("LEAVE:"):
-                    parts = msg.split(":")
-                    if len(parts) == 3:
-                        peer_handle, peer_port = parts[1], int(parts[2])
-                        key = (sender_ip, peer_port)
-                        if key in self.peers:
-                            del self.peers[key]
-                            print(f"[Discovery] {peer_handle}@{sender_ip}:{peer_port} hat das Netzwerk verlassen.")
+            if msg == "WHOIS":
+                response = f"{handle}:{port}"
+                sock.sendto(response.encode(), addr)
 
-            except Exception as e:
-                print(f"[Discovery] Fehler beim Empfang: {e}")
+            elif msg.startswith("JOIN:"):
+                parts = msg.split(":")
+                if len(parts) == 3:
+                    peer_handle, peer_port = parts[1], int(parts[2])
+                    key = (sender_ip, peer_port)
+                    peers[key] = {
+                        "handle": peer_handle,
+                        "last_seen": now
+                    }
 
-    def cleanup_loop(self):
-        while self.running:
-            now = time.time()
-            stale = [key for key, val in self.peers.items() if now - val["last_seen"] > 15]
-            for key in stale:
-                handle = self.peers[key]["handle"]
-                print(f"[Discovery] Entferne inaktiven Peer {handle}@{key[0]}:{key[1]}")
-                del self.peers[key]
-            time.sleep(10)
+            elif msg.startswith("LEAVE:"):
+                parts = msg.split(":")
+                if len(parts) == 3:
+                    peer_handle, peer_port = parts[1], int(parts[2])
+                    key = (sender_ip, peer_port)
+                    if key in peers:
+                        del peers[key]
 
-    def start(self):
-        threading.Thread(target=self.send_join_loop, daemon=True).start()
-        threading.Thread(target=self.listen_loop, daemon=True).start()
-        threading.Thread(target=self.cleanup_loop, daemon=True).start()
+        except socket.timeout:
+            pass
 
-    def stop(self):
-        self.running = False
+        # Alte Peers entfernen
+        stale = [key for key, val in peers.items() if now - val["last_seen"] > 15]
+        for key in stale:
+            del peers[key]
 
-    def get_peers(self):
-        return [f"{ip}:{port}" for (ip, port) in self.peers.keys()]
+        # Peer-Liste regelmäßig an Hauptprozess senden
+        pipe_conn.send([f"{ip}:{port}" for (ip, port) in peers.keys()])
 
