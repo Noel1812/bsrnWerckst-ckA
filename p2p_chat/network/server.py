@@ -1,25 +1,33 @@
 import socket
 
-#1 - Server sets up a listening socket
-def start_server():
- with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind(('localhost', 65432))
-    s.listen()
-    print("Server is listening on port 65432...")
+def empfange_nachricht(sock):
+    nachricht = sock.recv(1024).decode()
+    print("Nachricht empfangen:", nachricht)
 
-    #2 - Server accepts a connection
-    conn, addr = s.accept()
-    # Accepting a connection from a client
-    with conn:
-        # Print the address of the connected client
-        print(f"Connected by {addr}")
+def empfange_bild(sock):
+    groesse = int.from_bytes(sock.recv(4), 'big')
+    daten = b""
+    while len(daten) < groesse:
+        daten += sock.recv(1024)
+    with open("empfangenes_bild.jpg", "wb") as f:
+        f.write(daten)
+    print("Bild gespeichert als empfangenes_bild.jpg")
 
-        #3 - Server receives data from the client
-        
-        while True:
-            # Receive data from the client
-            data = conn.recv(1024)
-            # If no data is received, the connection is closed
-            if not data:
-                break
-            conn.sendall(data)
+# Server starten
+server = socket.socket()
+server.bind(("", 5000))
+server.listen(1)
+
+print("Warte auf Nachrichten oder Bilder...")
+
+while True:
+    conn, addr = server.accept()
+    print("Verbunden mit", addr)
+    code = conn.recv(4).decode()
+
+    if code == "MSG:":
+        empfange_nachricht(conn)
+    elif code == "IMG:":
+        empfange_bild(conn)
+
+    conn.close()
