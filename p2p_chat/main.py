@@ -1,45 +1,54 @@
-from config.loader import load_config
-from network.messaging import send_message, start_listening
-import threading
-
-# Datei aus settings.toml einlesen
 import sys
+import socket
+import threading
+from config.loader import load_config
+from network.messaging import send_message, send_image, start_listening
 
-# Optional: Dateiname per Argument übergeben
+# Konfiguration laden (optional über Argument)
 config_path = sys.argv[1] if len(sys.argv) > 1 else "config/settings.toml"
 config = load_config(config_path)
 
 handle = config["handle"]
-my_port = config["port"]
+port = config["port"]
 peers = config["peers"]
+whoisport = config.get("whoisport", 6000)
 
-#  Konfiguration ausgeben 
 print("Handle:", handle)
-print("Port:", my_port)
+print("Port:", port)
 print("Peers:", peers)
 print("Starte Listener...")
 
-# listener
-threading.Thread(target=start_listening, args=(my_port,), daemon=True).start()
+# Starte TCP-Server im Hintergrund
+threading.Thread(target=start_listening, args=(port,), daemon=True).start()
 
-# while schleife um Nachrichten einzugeben 
-print("Gib eine Nachricht ein (oder 'exit' zum Beenden):")
+# Eingabe-Schleife
+print("Gib eine Nachricht ein (Text oder '/send pfad/zum/bild.jpg', 'exit' zum Beenden):")
 while True:
     message = input("> ")
-    if message == "exit":
+    if message.strip().lower() == "exit":
         break
 
-    full_message = f"{handle}: {message}"
-    for peer in peers:
-        ip, port = peer.split(":")
-        send_message(full_message, ip, int(port))
+    if message.startswith("/send "):
+        # Bildpfad extrahieren
+        pfad = message.split(" ", 1)[1]
+        for peer in peers:
+            ip, peer_port = peer.split(":")
+            try:
+                send_image(pfad, ip, int(peer_port))
+                print(f"[Bild] Gesendet an {ip}:{peer_port}")
+            except Exception as e:
+                print(f"[Fehler] Konnte Bild nicht senden: {e}")
+    else:
+        full_msg = f"{handle}: {message}"
+        for peer in peers:
+            ip, peer_port = peer.split(":")
+            try:
+                send_message(full_msg, ip, int(peer_port))
+            except Exception as e:
+                print(f"[Fehler] Nachricht nicht gesendet: {e}")
 
-
-
-
-# Verknüpfung mit Discovery (eventuell)
-
+# Abschließend LEAVE-Nachricht senden
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 leave_msg = f"LEAVE:{handle}:{port}"
 sock.sendto(leave_msg.encode(), ("255.255.255.255", whoisport))
-
+print("[Discovery] LEAVE gesendet. Beende Programm.")
