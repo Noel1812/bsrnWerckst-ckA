@@ -1,28 +1,61 @@
-# CLI Simulation - von Nurettin Tasoluk
-# Grundbefehle eines Peer-to-Peer-Chats zur Vorbereitung auf die Socket-Programmierung
+import socket
+import os
 
-def start_p2p_demo():
-    print("----- P2P Chat Netzwerk -----")
-    print("Verfügbare Befehle: JOIN | WHO | MSG | IMG | LEAVE")
-    print("Ziel: Verständnis zeigen, wie Peer-Kommunikation in Python ablaufen wird.\n")
+def run_cli(handle, port, whoisport, pipe_conn):
+    """
+    Interaktive Kommandozeile für Benutzerbefehle.
+    Verarbeitet: PEERS, MSG, IMG, LEAVE, BEENDEN.
+    Kommuniziert über pipe_conn mit dem Discovery-Prozess.
+    """
+    print("Verfügbare Befehle: PEERS | MSG | IMG | LEAVE | BEENDEN")
+    
+    try:
+        while True:
+            cmd = input(">> ").strip().upper()
 
-    aktiv = True
-    while aktiv:
-        eingabe = input(">> Befehl eingeben: ").strip().upper()
+            if cmd == "PEERS":
+                # Zeige Peer-Liste, falls verfügbar
+                if pipe_conn.poll(1):
+                    peers = pipe_conn.recv()
+                    if peers:
+                        print(" Aktive Peers:")
+                        for peer in peers:
+                            print(f" - {peer}")
+                    else:
+                        print(" Keine aktiven Peers gefunden.")
+                else:
+                    print(" Keine neuen Peer-Daten verfügbar.")
 
-        if eingabe == "JOIN":
-            print("[System] Du trittst dem lokalen Chat-Netzwerk bei (noch ohne Verbindung).")
-        elif eingabe == "WHO":
-            print("[System] Aktive Peers: Peer_01, Peer_02 (simuliert)")
-        elif eingabe == "MSG":
-            print("[System] Nachricht wird vorbereitet zum Senden... (Netzwerklogik folgt später)")
-        elif eingabe == "IMG":
-            print("[System] Bildversand ist geplant, aber aktuell nicht implementiert.")
-        elif eingabe == "LEAVE":
-            print("[System] Verbindung getrennt. Du hast das Netzwerk verlassen.")
-            aktiv = False
-        else:
-            print("[Fehler] Unbekannter Befehl. Bitte gültigen Befehl eingeben.")
+            elif cmd == "MSG":
+                # Nachricht an Peer senden
+                ip = input("Peer-IP: ").strip()
+                port_str = input("Peer-Port: ").strip()
+                msg = input("Nachricht: ").strip()
+                send_message(f"{handle}: {msg}", ip, int(port_str))
 
-if __name__ == "__main__":
-    start_p2p_demo()
+            elif cmd == "IMG":
+                # Bild an Peer senden
+                ip = input("Peer-IP: ").strip()
+                port_str = input("Peer-Port: ").strip()
+                filepath = input("Pfad zum Bild: ").strip()
+                send_image(filepath, ip, int(port_str), handle)
+
+            elif cmd == "LEAVE":
+                # LEAVE-Broadcast senden und beenden
+                leave_msg = f"LEAVE:{handle}:{port}"
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                sock.sendto(leave_msg.encode(), ("255.255.255.255", whoisport))
+                sock.close()
+                print(" Du hast den Chat verlassen.")
+                break
+
+            elif cmd == "BEENDEN":
+                print(" CLI wird beendet.")
+                break
+
+            else:
+                print(" Ungültiger Befehl. Versuche: PEERS | MSG | IMG | LEAVE | BEENDEN")
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Manuelle Beendigung durch Benutzer (Strg+C).")
