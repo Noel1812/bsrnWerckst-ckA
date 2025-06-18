@@ -1,4 +1,7 @@
-handle = "Testperson"
+handle = "Mulu"
 port = 5001
-peers = ["127.0.0.1:5000"]
+whoisport = 4000
+autoreply = "Mulu ist kurz AFK."
+imagepath = "bilder"
+
 

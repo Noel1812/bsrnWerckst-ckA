@@ -1,5 +1,5 @@
 import socket
-import os
+from network.client import send_msg, send_image  # Noels(meine Funktion aus client.py)
 
 def run_cli(handle, port, whoisport, pipe_conn):
     """
@@ -30,15 +30,13 @@ def run_cli(handle, port, whoisport, pipe_conn):
                 # Nachricht an Peer senden
                 ip = input("Peer-IP: ").strip()
                 port_str = input("Peer-Port: ").strip()
-                msg = input("Nachricht: ").strip()
-                send_message(f"{handle}: {msg}", ip, int(port_str))
+                send_msg(ip, int(port_str))  # Nutzt HANDLE aus client.py (automatisch)
 
             elif cmd == "IMG":
                 # Bild an Peer senden
                 ip = input("Peer-IP: ").strip()
                 port_str = input("Peer-Port: ").strip()
-                filepath = input("Pfad zum Bild: ").strip()
-                send_image(filepath, ip, int(port_str), handle)
+                send_image(ip, int(port_str))  # Nutzt HANDLE + Pfad automatisch
 
             elif cmd == "LEAVE":
                 # LEAVE-Broadcast senden und beenden
