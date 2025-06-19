@@ -5,44 +5,55 @@ import time
 from multiprocessing import Process, Pipe
 
 def discovery_process(handle, port, whoisport, pipe_conn):
-    peers = {}  # {(ip, port): {"handle": ..., "last_seen": ...}}
+    peers = {}  # {(ip, port): {"handle": ..., "ip": ..., "port": ...}}
 
-    # Setup Socket
+    # UDP-Socket vorbereiten
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.bind(("0.0.0.0", whoisport))
 
-    last_send_time = 0
+    # Eigene IP herausfinden (robust)
+    try:
+        temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        temp_sock.connect(("8.8.8.8", 80))
+        local_ip = temp_sock.getsockname()[0]
+        temp_sock.close()
+    except Exception:
+        local_ip = "127.0.0.1"
+
+    # Sich selbst zur Peer-Liste hinzufügen
+    peers[(local_ip, port)] = {
+        "handle": handle,
+        "ip": local_ip,
+        "port": port
+    }
 
     while True:
-        now = time.time()
-
-        # Regelmäßig JOIN senden
-        if now - last_send_time > 5:
-            message = f"JOIN:{handle}:{port}"
-            sock.sendto(message.encode(), ("255.255.255.255", whoisport))
-            last_send_time = now
-
-        # Nachrichten empfangen
         sock.settimeout(1.0)
         try:
             data, addr = sock.recvfrom(1024)
             msg = data.decode().strip()
             sender_ip, _ = addr
 
-            if msg == "WHOIS":
-                response = f"{handle}:{port}"
+            if msg == "WHOIS" or msg == "WHO":
+                # Antwort im Format: KNOWNUSERS <Handle1> <IP1> <Port1>, ...
+                response = "KNOWNUSERS"
+                for (ip, p), info in peers.items():
+                    response += f" {info['handle']} {ip} {p},"
+                response = response.rstrip(',')
                 sock.sendto(response.encode(), addr)
 
             elif msg.startswith("JOIN:"):
                 parts = msg.split(":")
                 if len(parts) == 3:
-                    peer_handle, peer_port = parts[1], int(parts[2])
+                    peer_handle = parts[1]
+                    peer_port = int(parts[2])
                     key = (sender_ip, peer_port)
                     peers[key] = {
                         "handle": peer_handle,
-                        "last_seen": now
+                        "ip": sender_ip,
+                        "port": peer_port
                     }
 
             elif msg.startswith("LEAVE:"):
@@ -56,11 +67,7 @@ def discovery_process(handle, port, whoisport, pipe_conn):
         except socket.timeout:
             pass
 
-        # Alte Peers entfernen
-        stale = [key for key, val in peers.items() if now - val["last_seen"] > 15]
-        for key in stale:
-            del peers[key]
-
-        # Peer-Liste regelmäßig an Hauptprozess senden
-        pipe_conn.send([f"{ip}:{port}" for (ip, port) in peers.keys()])
-
+        # Peer-Liste an Hauptprozess senden (z. B. CLI)
+        pipe_conn.send([
+            f"{val['handle']} {ip}:{port}" for (ip, port), val in peers.items()
+        ])
