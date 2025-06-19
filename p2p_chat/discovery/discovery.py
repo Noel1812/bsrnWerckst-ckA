@@ -3,9 +3,16 @@
 import socket
 import time
 from multiprocessing import Process, Pipe
+from config.loader import load_config
 
-def discovery_process(handle, port, whoisport, pipe_conn):
-    peers = {}  # {(ip, port): {"handle": ..., "ip": ..., "port": ...}}
+def discovery_process(pipe_conn):
+    config = load_config("config/settings1.toml")  # ← passt du je nach Client an
+    handle = config["handle"]
+    port = config["port"]
+    whoisport = config["whoisport"]
+
+    peers = {}  # {(ip, port): {"handle": ..., "ip": ..., "port": ..., "last_seen": ...}}
+
 
     # UDP-Socket vorbereiten
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
