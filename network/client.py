@@ -2,18 +2,11 @@ import socket
 import os
 from config.loader import load_config
 
-config = load_config("config/settings3.toml")
-HANDLE = config["handle"]
-PORT = config["port"]
-WHOISPORT = config["whoisport"]
-AUTOREPLY = config["autoreply"]
-IMAGEPATH = config["imagepath"]
-
 ##
 # @file client.py
 # @brief Dieses Programm sendet Textnachrichten und Bilder über TCP/IP im lokalen Netzwerk.
-# Von Noel
-# Das war ein weiterer Teil des Peer-to-Peer Chat-Projekts. Ich habe diesen Client gebaut, damit
+#
+# Das war ein weiterer Teil (Noel) des Peer-to-Peer Chat-Projekts. Ich habe diesen Client gebaut, damit
 # man mit anderen Peers über IP kommunizieren kann – entweder mit Text oder mit einem Bild.
 #
 # Ursprünglich hatte ich Unterstützung für IPv6 drin, aber das hat bei meinem Kommilitonen 
@@ -25,46 +18,18 @@ IMAGEPATH = config["imagepath"]
 # Außerdem war es schwer, bei IPv6 richtige Adressen zu bekommen, die auf beiden Rechnern 
 # funktionieren. Wir haben viel Zeit mit `ip addr show` und `ipconfig` verbracht, aber ohne Erfolg.  
 # Zwischenzeitlich konnte ich zwar Textnachrichten senden, aber mein Kommilitone konnte nicht antworten.  
+# IPv4 war letztendlich einfach klarer und zuverlässiger.
 
 ## @var config
 # Lädt Konfigurationswerte aus der TOML-Datei
 config = load_config("config/settings3.toml")
-HANDLE = config["handle"]          
+HANDLE = config["handle"]       
 PORT = config["port"]             
-WHOISPORT = config["whoisport"]  
+WHOISPORT = config["whoisport"]    
 AUTOREPLY = config["autoreply"]    
-IMAGEPATH = config["imagepath"]    
+IMAGEPATH = config["imagepath"] 
 
-# Liste an Wörtern, die zensiert werden sollen
-BLACKLIST = [
-    "arschloch",
-    "penner",
-    "fuck",
-    "idiot",
-    "dummkopf",
-    "arsch"
-    "spast",
-    "miststück",
-    "arschh",
-    "fuckk"
-    # beliebig erweiterbar
-]
-
-def zensiere_nachricht(text):
-    for wort in BLACKLIST:
-        maskiert = "*" * len(wort)
-        text = text.replace(wort, maskiert).replace(wort.capitalize(), maskiert)
-    return text
-
-def create_socket_for_ip(ip):
-    try:
-        socket.inet_pton(socket.AF_INET6, ip)
-        return socket.socket(socket.AF_INET6, socket.SOCK_STREAM), True
-    except OSError:
-        return socket.socket(socket.AF_INET, socket.SOCK_STREAM), False
-    
-BUFFER_SIZE = 4096 
-
+BUFFER_SIZE = 4096  
 
 ##
 # @brief Liste mit Wörtern, die in Nachrichten zensiert werden sollen.
