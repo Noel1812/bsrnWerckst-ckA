@@ -70,7 +70,7 @@ def discovery_process(handle, port, whoisport, pipe_conn):
                     peer_port = int(parts[2])
                     peers.pop((sender_ip, peer_port), None)
 
-            # Wenn WHO empfangen wird → eigene bekannte Peers zurücksenden
+            # Wenn WHO empfangen wird -> eigene bekannte Peers zurücksenden
             elif msg.startswith("WHO"):
                 user_entries = []
                 for (ip, p), info in peers.items():
