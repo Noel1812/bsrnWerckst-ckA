@@ -1,5 +1,5 @@
 import socket
-from network.client import send_msg, send_image  # Noels (deine) Funktion aus client.py
+from network.client import send_msg, send_image  # Noels Funktion aus client.py
 
 def run_cli(handle, port, whoisport, pipe_conn):
     print("Verfügbare Befehle: PEERS | MSG | IMG | JOIN | LEAVE | WHO | BEENDEN")
