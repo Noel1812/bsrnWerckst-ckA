@@ -1,0 +1,5 @@
+handle = "Milad"
+port = 5011
+whoisport = 4000
+autoreply = " "
+imagepath = "bilder"

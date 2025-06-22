@@ -1,0 +1,5 @@
+handle = "Artian"
+port = 5004
+whoisport = 4000
+autoreply = " "
+imagepath = "bilder"
